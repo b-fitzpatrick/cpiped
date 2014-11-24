@@ -33,6 +33,8 @@
 
 snd_pcm_t *handle;
 int daemonize = 0;
+int readfd = 0;
+int writefd = 0;
 
 void mylog(int level, const char *format, ...)
 {
@@ -47,10 +49,13 @@ void mylog(int level, const char *format, ...)
     va_end(args);
 }
 
-void flushhw() {
+void myterm() {
+	mylog(LOG_INFO, "Stopping due to interrupt/term.\n");
 	snd_pcm_drain(handle);
 	snd_pcm_close(handle);
-	exit(0);
+	if (readfd > 0) close(readfd);
+	if (writefd > 0) close(writefd);
+	exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[]) {
@@ -65,8 +70,6 @@ int main(int argc, char *argv[]) {
 	int16_t *scapbuffer;
 	char *capdev = "default";
     char *fifonam;
-    int readfd = 0;
-	int writefd = 0;
     struct stat status;
     int readbytes = 0;
 	int writebytes = 0;
@@ -97,11 +100,15 @@ int main(int argc, char *argv[]) {
 	int err = 0;
 	
 	pid_t pid, sid;
+	char pidstr[10];
+	char pidfile[50];
+	int pidfd;
 
 	// Ignore pipe signals
     signal(SIGPIPE, SIG_IGN);
-	// Flush the hardware buffer on interrupt
-	signal(SIGINT, flushhw);
+	// Flush the hardware buffer on interrupt/term
+	signal(SIGINT, myterm);
+	signal(SIGTERM, myterm);
 
 	// Process command-line options and arguments
 	while ((opt = getopt(argc, argv, "d:b:s:e:t:D")) != -1) {
@@ -163,8 +170,12 @@ int main(int argc, char *argv[]) {
 		}
 		goto error;
 	}
-	fifonam = argv[argc - 1];
 	
+	mylog(LOG_INFO, "Starting up.\n");
+	
+	fifonam = argv[argc - 1];
+
+	// Daemonize
 	if (daemonize) {
 		pid = fork();
 		if (pid < 0) {
@@ -187,6 +198,13 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	// Write the pidfile
+	sprintf(pidfile, "/var/run/cpiped.pid");
+	sprintf(pidstr, "%d\n", getpid());
+	pidfd = open(pidfile, O_RDWR|O_CREAT, 0644);
+	write(pidfd, pidstr, strlen(pidstr));
+	close(pidfd);
+	
     // Open the FIFO for read first, so the open for write succeeds.
     readfd = open(fifonam, O_RDONLY | O_NONBLOCK);
 	if (readfd <= 0) {
@@ -369,5 +387,6 @@ int main(int argc, char *argv[]) {
 error:
 	if (readfd > 0) close(readfd);
 	if (writefd > 0) close(writefd);
+	mylog(LOG_INFO, "Stopping due to error.");
 	exit(EXIT_FAILURE);
 }
