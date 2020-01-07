@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
   char *capbuffer;
   int16_t *scapbuffer;
   char *capdev = "default";
+  char *pidpath = "/var/run/cpiped.pid";
   char *fifonam;
   struct stat status;
   int readbytes = 0;
@@ -129,7 +130,7 @@ int main(int argc, char *argv[]) {
   signal(SIGTERM, myterm);
 
   // Process command-line options and arguments
-  while ((opt = getopt(argc, argv, "d:b:s:e:t:Dv")) != -1) {
+  while ((opt = getopt(argc, argv, "d:b:s:e:t:Dp:v")) != -1) {
     switch (opt) {
     case 'd':
       capdev = optarg;
@@ -167,6 +168,9 @@ int main(int argc, char *argv[]) {
     case 'D':
       daemonize = 1;
       break;
+    case 'p':
+      pidpath = optarg;
+      break;
     case 'v':
       log_verb = 1;
       break;
@@ -187,6 +191,7 @@ int main(int argc, char *argv[]) {
       " -e : command to run when silence detected\n"
       " -t : silence threshold (1 - 32767, [100])\n"
       " -D : daemonize\n"
+      " -p : path to pidfile [/var/run/cpiped.pid]\n"
       " -v : enable more verbose logs\n"
       " FIFO : path to a named pipe\n", argv[0]);
     }
@@ -221,7 +226,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Write the pidfile
-  sprintf(pidfile, "/var/run/cpiped.pid");
+  sprintf(pidfile, pidpath);
   sprintf(pidstr, "%d\n", getpid());
   pidfd = open(pidfile, O_RDWR|O_CREAT, 0644);
   write(pidfd, pidstr, strlen(pidstr));
