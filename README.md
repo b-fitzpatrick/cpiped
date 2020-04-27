@@ -1,4 +1,4 @@
-cpiped captures an audio stream and outputs it to a pipe with a bit of buffering
+cpiped (https://github.com/b-fitzpatrick/cpiped) captures an audio stream and outputs it to a pipe with a bit of buffering
 to handle clock mismatch. It also includes silence/sound detection and the ability
 to run a command on detection.
 
