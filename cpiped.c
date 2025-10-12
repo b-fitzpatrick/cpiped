@@ -38,15 +38,17 @@ int writefd = 0;
 
 void mylog(int level, const char *format, ...)
 {
-    va_list args;
-    va_start (args, format);
+  va_list args;
+  va_start (args, format);
 
-    if (daemonize) {
-        vsyslog(level, format, args);
-    } else {
+  if (daemonize) {
+    vsyslog(level, format, args);
+  } else {
     vprintf(format, args);
-    }
-    va_end(args);
+  }
+
+  va_end(args);
+}
 }
 
 void myterm() {
