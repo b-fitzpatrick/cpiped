@@ -9,3 +9,7 @@ runs a simple script to start playing the associated pipe in forked-daapd.
 #### Merged work
 - NDpiped builds on cpiped but modifies code such that the buffer is only written if there is sound.  Otherwise I found buffer was constantly writing and Forked-Daapd was playing silence rather then my playlist. (https://github.com/natedreger/cpiped) and (https://github.com/natedreger/NDpiped)
 - Parametrized pid file by Mario Wenzel (https://github.com/maweki/cpiped)
+
+#### ToDo(s)
+- [ ] Improve Makefile to create dedicated build folder
+- [ ] Improve Makefile to add install directive
