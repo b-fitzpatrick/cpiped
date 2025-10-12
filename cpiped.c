@@ -300,13 +300,13 @@ int main(int argc, char *argv[]) {
     
     if (bufused < capsize) {
       // Buffer is almost empty, don't send to pipe
-      mylog(LOG_INFO, "Filling buffer\n");
+      mylogverb(LOG_INFO, 1, "Filling buffer\n");
       fillbuf = 1;
     }
     
     if (bufused > (int)bufsize - 1 - capsize) {
       // Buffer is almost full, don't store captured samples
-      mylog(LOG_INFO, "Buffer full\n");
+      mylogverb(LOG_INFO, 0, "Buffer full\n");
       buffull = 1;
     }
 
@@ -348,9 +348,9 @@ int main(int argc, char *argv[]) {
       
       if (silent && soundcount > 1) {
         silent = 0;
-        mylog(LOG_INFO, "Sound detected. Last two values: %d, %d\n", prevpower, (int)power);
+        mylogverb(LOG_INFO, 0, "Sound detected. Last two values: %d, %d\n", prevpower, (int)power);
         if (strcmp(startcmd, "") != 0) {
-          mylog(LOG_INFO, "Running '%s'\n", startcmd);
+          mylogverb(LOG_INFO, 0, "Running '%s'\n", startcmd);
           if (system(startcmd) != 0) {
             mylog(LOG_ERR, "Error running start command.\n");
           }
@@ -359,9 +359,9 @@ int main(int argc, char *argv[]) {
       
       if (!silent && silentcount > 55) {
         silent = 1;
-        mylog(LOG_INFO, "Silence detected. Last two values: %d, %d\n", prevpower, (int)power);
+        mylogverb(LOG_INFO, 0, "Silence detected. Last two values: %d, %d\n", prevpower, (int)power);
         if (strcmp(endcmd, "") != 0) {
-          mylog(LOG_INFO, "Running '%s'\n", endcmd);
+          mylogverb(LOG_INFO, 0, "Running '%s'\n", endcmd);
           if (system(endcmd) != 0) {
             mylog(LOG_ERR, "Error running end command.\n");
           }
