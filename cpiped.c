@@ -55,10 +55,10 @@ void mylogverb(int level, int msg_verb, const char *format, ...)
 {
   va_list args;
   va_start (args, format);
-  
+
   if (msg_verb <= log_verb)
     mylog(level, format, args);
-  
+
   va_end(args);
 }
 
@@ -106,12 +106,12 @@ int main(int argc, char *argv[]) {
   char endcmd[1000] = "";
   int wrote = 0;
   int silentt = 100;
-  
+
   extern char *optarg;
   extern int optind;
   int opt;
   int err = 0;
-  
+
   pid_t pid, sid;
   char pidstr[10];
   char pidfile[50];
@@ -187,9 +187,9 @@ int main(int argc, char *argv[]) {
     }
     goto error;
   }
-  
+
   mylog(LOG_INFO, "Starting up.\n");
-  
+
   fifonam = argv[argc - 1];
 
   // Daemonize
@@ -200,15 +200,15 @@ int main(int argc, char *argv[]) {
     } else if (pid > 0) {
       exit(EXIT_SUCCESS);
     }
-    
+
     umask(0);
-    
+
     sid = setsid();
     if (sid < 0) {
       mylog(LOG_ERR, "Error creating new session: %s\n", strerror(errno));
       goto error;
     }
-    
+
     if (chdir("/") != 0) {
       mylog(LOG_ERR, "Error on chdir /: %s\n", strerror(errno));
       goto error;
@@ -221,7 +221,7 @@ int main(int argc, char *argv[]) {
   pidfd = open(pidfile, O_RDWR|O_CREAT, 0644);
   write(pidfd, pidstr, strlen(pidstr));
   close(pidfd);
-  
+
   // Open the FIFO for read first, so the open for write succeeds.
   readfd = open(fifonam, O_RDONLY | O_NONBLOCK);
   if (readfd <= 0) {
@@ -242,10 +242,10 @@ int main(int argc, char *argv[]) {
     goto error;
   }
   close(readfd);
-  
+
   // Set the FIFO size to 8192 bytes to minimize latency
   fcntl(writefd, F_SETPIPE_SZ, 8192);
-  
+
   // Open PCM device for recording (capture).
   rc = snd_pcm_open(&handle, capdev, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
   if (rc != 0) {
@@ -272,13 +272,13 @@ int main(int argc, char *argv[]) {
 
   // Determine the elapsed time of one period
   snd_pcm_hw_params_get_period_time(params, &capusec, &dir);
-  
+
   // Create a capture buffer large enough to hold one period
   snd_pcm_hw_params_get_period_size(params, &frames, &dir);
   capsize = frames * 4; // 2 bytes/sample, 2 channels
   capbuffer = calloc(capsize, sizeof(char));
   scapbuffer = (int16_t*)capbuffer;
-  
+
   // Determine write size
   writebytes = capsize - 32 ; // Write a bit less to make sure write controls pace
 
@@ -287,30 +287,8 @@ int main(int argc, char *argv[]) {
   buf = calloc(bufsize, sizeof(char));
   bufstart = 0;
   bufend = 0;
-  
-  while (1) {
-    // Determine the amount of buffer used
-    bufused = bufend - bufstart + (bufend < bufstart) * (bufsize - 1);
-    //printf("size:%d, start:%d, end:%d, used:%d, wrote:%d\n", bufsize, bufstart, bufend, bufused, wrote);
-    
-    if (bufused < capsize) {
-      // Buffer is almost empty, don't send to pipe
-      mylogverb(LOG_INFO, 1, "Filling buffer\n");
-      fillbuf = 1;
-    }
-    
-    if (bufused > (int)bufsize - 1 - capsize) {
-      // Buffer is almost full, don't store captured samples
-      mylogverb(LOG_INFO, 0, "Buffer full\n");
-      buffull = 1;
-    }
 
-    // Resume both capture storage and write to pipe when the buffer reaches half-full
-    if ((fillbuf == 1) && (bufused > (int)bufsize / 2))
-      fillbuf = 0;
-    if ((buffull == 1) && (bufused < (int)bufsize / 2))
-      buffull = 0;
-    
+  while (1) {
     // Capture samples
     if (!wrote) // When not writing, wait a bit between captures.
       usleep(capusec * .95);
@@ -323,8 +301,8 @@ int main(int argc, char *argv[]) {
     } else if (rc < 0) {
       mylog(LOG_ERR, "Capture error: %s\n", snd_strerror(rc));
     }
-    
-    // Compute RMS power level regularly
+
+    // Check if there is sound and if so compute RMS power level regularly and count sounds and silences
     if (capcount > 10 && rc > 0) { // Approx. every quarter second
       power = 0;
       for (i = 0; i < rc / 2; i++) {
@@ -332,7 +310,7 @@ int main(int argc, char *argv[]) {
       }
       power = sqrt(power/rc);
       capcount = 0;
-      
+
       if (power > silentt) {
         soundcount++;
         silentcount = 0;
@@ -340,7 +318,7 @@ int main(int argc, char *argv[]) {
         silentcount++;
         soundcount = 0;
       }
-      
+
       if (silent && soundcount > 1) {
         silent = 0;
         mylogverb(LOG_INFO, 0, "Sound detected. Last two values: %d, %d\n", prevpower, (int)power);
@@ -351,7 +329,7 @@ int main(int argc, char *argv[]) {
           }
         }
       }
-      
+
       if (!silent && silentcount > 55) {
         silent = 1;
         mylogverb(LOG_INFO, 0, "Silence detected. Last two values: %d, %d\n", prevpower, (int)power);
@@ -365,8 +343,34 @@ int main(int argc, char *argv[]) {
     }
     prevpower = power;
     capcount++;
-      
-    if (!buffull  && rc > 0) {	
+  // end of soundcounter
+
+  // Check if there is sound, if so write to the pipe
+  if (soundcount > 0) {
+
+    // Determine the amount of buffer used
+    bufused = bufend - bufstart + (bufend < bufstart) * (bufsize - 1);
+    //printf("size:%d, start:%d, end:%d, used:%d, wrote:%d\n", bufsize, bufstart, bufend, bufused, wrote);
+
+    if (bufused < capsize) {
+      // Buffer is almost empty, don't send to pipe
+      mylogverb(LOG_INFO, 1, "Filling buffer\n");
+      fillbuf = 1;
+    }
+
+    if (bufused > (int)bufsize - 1 - capsize) {
+      // Buffer is almost full, don't store captured samples
+      mylogverb(LOG_INFO, 0, "Buffer full\n");
+      buffull = 1;
+    }
+
+    // Resume both capture storage and write to pipe when the buffer reaches half-full
+    if ((fillbuf == 1) && (bufused > (int)bufsize / 2))
+      fillbuf = 0;
+    if ((buffull == 1) && (bufused < (int)bufsize / 2))
+      buffull = 0;
+
+    if (!buffull  && rc > 0) {
       // Store samples in buffer
       readbytes = rc * 4;
       bufendtoend = bufsize - bufend;
@@ -380,7 +384,7 @@ int main(int argc, char *argv[]) {
       }
       bufend = (bufend + readbytes) % bufsize;
     }
-    
+
     wrote = 0;
     if (!fillbuf) {
       bufstarttoend = bufsize - bufstart;
@@ -398,9 +402,10 @@ int main(int argc, char *argv[]) {
         bufstart = (bufstart + readbytes) % bufsize; // Keep buffer used constant
       }
     }
-  }
+  } // end if
+ }
   exit(EXIT_SUCCESS);
-  
+
 error:
   if (readfd > 0) close(readfd);
   if (writefd > 0) close(writefd);

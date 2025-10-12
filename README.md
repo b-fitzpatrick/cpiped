@@ -6,4 +6,5 @@ I'm using this to capture line-in audio from a sound card and send it to
 forked-daapd (https://github.com/ejurgensen/forked-daapd). On sound detection, it
 runs a simple script to start playing the associated pipe in forked-daapd.
 
-NDpiped builds on cpiped but modifies code such that the buffer is only written if there is sound.  Otherwise I found buffer was constantly writing and Forked-Daapd was playing silence rather then my playlist.
+#### Merged work
+- NDpiped builds on cpiped but modifies code such that the buffer is only written if there is sound.  Otherwise I found buffer was constantly writing and Forked-Daapd was playing silence rather then my playlist. (https://github.com/natedreger/cpiped) and (https://github.com/natedreger/NDpiped)
