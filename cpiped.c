@@ -33,6 +33,7 @@
 
 snd_pcm_t *handle;
 int daemonize = 0;
+int log_verb = 0;
 int readfd = 0;
 int writefd = 0;
 
@@ -49,6 +50,16 @@ void mylog(int level, const char *format, ...)
 
   va_end(args);
 }
+
+void mylogverb(int level, int msg_verb, const char *format, ...)
+{
+  va_list args;
+  va_start (args, format);
+  
+  if (msg_verb <= log_verb)
+    mylog(level, format, args);
+  
+  va_end(args);
 }
 
 void myterm() {
@@ -113,7 +124,7 @@ int main(int argc, char *argv[]) {
   signal(SIGTERM, myterm);
 
   // Process command-line options and arguments
-  while ((opt = getopt(argc, argv, "d:b:s:e:t:D")) != -1) {
+  while ((opt = getopt(argc, argv, "d:b:s:e:t:Dv")) != -1) {
     switch (opt) {
     case 'd':
       capdev = optarg;
@@ -151,6 +162,9 @@ int main(int argc, char *argv[]) {
     case 'D':
       daemonize = 1;
       break;
+    case 'v':
+      log_verb = 1;
+      break;
     case '?':
       err = 1;
       mylog(LOG_ERR, "Invalid option: %s\n", argv[optind - 1]);
@@ -168,6 +182,7 @@ int main(int argc, char *argv[]) {
       " -e : command to run when silence detected\n"
       " -t : silence threshold (1 - 32767, [100])\n"
       " -D : daemonize\n"
+      " -v : enable more verbose logs\n"
       " FIFO : path to a named pipe\n", argv[0]);
     }
     goto error;
