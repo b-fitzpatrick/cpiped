@@ -1,6 +1,8 @@
 /*
- * Copyright (C) 2014 Brian Fitzpatrick <brian@froxen.com>
- *
+ * Original cpiped.c code Copyright (C) 2014 Brian Fitzpatrick <brian@froxen.com>
+ * 
+ * Modifications 2020 Nate Dreger <info@natedreger.com>
+ * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -271,29 +273,7 @@ int main(int argc, char *argv[]) {
   bufstart = 0;
   bufend = 0;
   
-  while (1) {
-    // Determine the amount of buffer used
-    bufused = bufend - bufstart + (bufend < bufstart) * (bufsize - 1);
-    //printf("size:%d, start:%d, end:%d, used:%d, wrote:%d\n", bufsize, bufstart, bufend, bufused, wrote);
-    
-    if (bufused < capsize) {
-      // Buffer is almost empty, don't send to pipe
-      mylog(LOG_INFO, "Filling buffer\n");
-      fillbuf = 1;
-    }
-    
-    if (bufused > (int)bufsize - 1 - capsize) {
-      // Buffer is almost full, don't store captured samples
-      mylog(LOG_INFO, "Buffer full\n");
-      buffull = 1;
-    }
-
-    // Resume both capture storage and write to pipe when the buffer reaches half-full
-    if ((fillbuf == 1) && (bufused > (int)bufsize / 2))
-      fillbuf = 0;
-    if ((buffull == 1) && (bufused < (int)bufsize / 2))
-      buffull = 0;
-    
+  while (1) { 
     // Capture samples
     if (!wrote) // When not writing, wait a bit between captures.
       usleep(capusec * .95);
@@ -306,8 +286,8 @@ int main(int argc, char *argv[]) {
     } else if (rc < 0) {
       mylog(LOG_ERR, "Capture error: %s\n", snd_strerror(rc));
     }
-    
-    // Compute RMS power level regularly
+ 
+    // Check if there is sound and if so compute RMS power level regularly and count sounds and silences
     if (capcount > 10 && rc > 0) { // Approx. every quarter second
       power = 0;
       for (i = 0; i < rc / 2; i++) {
@@ -348,7 +328,36 @@ int main(int argc, char *argv[]) {
     }
     prevpower = power;
     capcount++;
-      
+  // end of soundcounter   
+  
+  // Check if there is sound, if so write to the pipe
+  if (soundcount > 0) { 
+
+    // Determine the amount of buffer used
+    bufused = bufend - bufstart + (bufend < bufstart) * (bufsize - 1);
+    //printf("size:%d, start:%d, end:%d, used:%d, wrote:%d\n", bufsize, bufstart, bufend, bufused, wrote);
+    
+    if (bufused < capsize) {
+      // Buffer is almost empty, don't send to pipe
+      mylog(LOG_INFO, "Filling buffer\n");
+      // nate code
+      mylog(LOG_INFO, "Last two values: %d, %d\n", prevpower, (int)power);
+      fillbuf = 1;
+    }
+    
+    if (bufused > (int)bufsize - 1 - capsize) {
+      // Buffer is almost full, don't store captured samples
+      mylog(LOG_INFO, "Buffer full\n");
+      buffull = 1;
+    }
+
+    // Resume both capture storage and write to pipe when the buffer reaches half-full
+    if ((fillbuf == 1) && (bufused > (int)bufsize / 2))
+      fillbuf = 0;
+    if ((buffull == 1) && (bufused < (int)bufsize / 2))
+      buffull = 0;
+    
+    
     if (!buffull  && rc > 0) {	
       // Store samples in buffer
       readbytes = rc * 4;
@@ -363,7 +372,7 @@ int main(int argc, char *argv[]) {
       }
       bufend = (bufend + readbytes) % bufsize;
     }
-    
+   
     wrote = 0;
     if (!fillbuf) {
       bufstarttoend = bufsize - bufstart;
@@ -381,7 +390,8 @@ int main(int argc, char *argv[]) {
         bufstart = (bufstart + readbytes) % bufsize; // Keep buffer used constant
       }
     }
-  }
+  } // end if
+ }
   exit(EXIT_SUCCESS);
   
 error:
