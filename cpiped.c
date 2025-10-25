@@ -20,16 +20,16 @@
 // Use the newer ALSA API
 #define ALSA_PCM_NEW_HW_PARAMS_API
 
-#include <stdio.h>
-#include <math.h>
 #include <alsa/asoundlib.h>
+#include <errno.h>
+#include <math.h>
 #include <signal.h>
 #include <sys/stat.h>
+#include <syslog.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <syslog.h>
-#include <errno.h>
 
 snd_pcm_t *handle;
 int daemonize = 0;
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
   signal(SIGTERM, myterm);
 
   // Process command-line options and arguments
-  while ((opt = getopt(argc, argv, "d:b:s:e:t:Dp:v")) != -1) {
+  while ((opt = getopt(argc, argv, "d:b:s:e:t:Dp:v:")) != -1) {
     switch (opt) {
     case 'd':
       capdev = optarg;
@@ -176,6 +176,8 @@ int main(int argc, char *argv[]) {
       break;
     case 'v':
       log_verb = 1;
+      if (strcmp(optarg, "v" ) == 0) {log_verb = 2;}
+      if (strcmp(optarg, "vv") == 0) {log_verb = 3;}
       break;
     case '?':
       err = 1;
@@ -195,7 +197,7 @@ int main(int argc, char *argv[]) {
       " -t : silence threshold (1 - 32767, [100])\n"
       " -D : daemonize\n"
       " -p : path to pidfile [/var/run/cpiped.pid]\n"
-      " -v : enable more verbose logs\n"
+      " -v : enable more verbose logs (-vv and -vvv for higher verbosity levels)\n"
       " FIFO : path to a named pipe\n", argv[0]);
     }
     goto error;
