@@ -95,7 +95,8 @@ int main(int argc, char *argv[]) {
   int readbytes = 0;
   int writebytes = 0;
   char *buf;
-  size_t bufsize = 176400;
+  size_t bufsize = 0;
+  float bufdur = 0.25;
   int bufstart;
   int bufend;
   int bufused;
@@ -138,8 +139,8 @@ int main(int argc, char *argv[]) {
       capdev = optarg;
       break;
     case 'b':
-      bufsize = atof(optarg) * samplerate * 8;
-      if (bufsize < 33280 || bufsize > 1764000) {
+      bufdur = atof(optarg);
+      if (bufdur < 0.1 || bufdur > 5.0) {
         mylog(LOG_ERR, "Invalid buffer. Range is 0.1-5.0 sec.\n");
         goto error;
       }
@@ -270,6 +271,9 @@ int main(int argc, char *argv[]) {
   snd_pcm_hw_params_set_format(handle, params, SND_PCM_FORMAT_S16_LE);
   snd_pcm_hw_params_set_channels(handle, params, capchannels);
   snd_pcm_hw_params_set_rate_near(handle, params, &samplerate, &dir);
+
+  // set buffer size in bit
+  bufsize = bufdur * samplerate * capchannels * 8;
 
   // Set period size to 1024 frames.
   frames = 1024;
