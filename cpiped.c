@@ -80,7 +80,9 @@ int main(int argc, char *argv[]) {
   int rc;
   int capsize;
   snd_pcm_hw_params_t *params;
-  unsigned int val = 44100;
+  unsigned int samplerate = 41000;
+  unsigned int samplesize = 16;
+  unsigned int capchannels = 2;
   unsigned int capusec;
   int dir;
   snd_pcm_uframes_t frames;
@@ -136,7 +138,7 @@ int main(int argc, char *argv[]) {
       capdev = optarg;
       break;
     case 'b':
-      bufsize = atof(optarg) * val * 8;
+      bufsize = atof(optarg) * samplerate * 8;
       if (bufsize < 33280 || bufsize > 1764000) {
         mylog(LOG_ERR, "Invalid buffer. Range is 0.1-5.0 sec.\n");
         goto error;
@@ -266,8 +268,8 @@ int main(int argc, char *argv[]) {
   snd_pcm_hw_params_any(handle, params);
   snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
   snd_pcm_hw_params_set_format(handle, params, SND_PCM_FORMAT_S16_LE);
-  snd_pcm_hw_params_set_channels(handle, params, 2);
-  snd_pcm_hw_params_set_rate_near(handle, params, &val, &dir);
+  snd_pcm_hw_params_set_channels(handle, params, capchannels);
+  snd_pcm_hw_params_set_rate_near(handle, params, &samplerate, &dir);
 
   // Set period size to 1024 frames.
   frames = 1024;
@@ -285,7 +287,7 @@ int main(int argc, char *argv[]) {
 
   // Create a capture buffer large enough to hold one period
   snd_pcm_hw_params_get_period_size(params, &frames, &dir);
-  capsize = frames * 4; // 2 bytes/sample, 2 channels
+  capsize = frames * (samplesize / 8) * capchannels; // (<samplesize> / 8) bytes/sample * <capchannels> channels
   capbuffer = calloc(capsize, sizeof(char));
   scapbuffer = (int16_t*)capbuffer;
 
@@ -353,72 +355,72 @@ int main(int argc, char *argv[]) {
     }
     prevpower = power;
     capcount++;
-  // end of soundcounter
+    // end of soundcounter
 
-  // Check if there is sound, if so write to the pipe
-  if (soundcount > 0) {
+    // Check if there is sound, if so write to the pipe
+    if (soundcount > 0) {
 
-    // Determine the amount of buffer used
-    bufused = bufend - bufstart + (bufend < bufstart) * (bufsize - 1);
-    //printf("size:%d, start:%d, end:%d, used:%d, wrote:%d\n", bufsize, bufstart, bufend, bufused, wrote);
+      // Determine the amount of buffer used
+      bufused = bufend - bufstart + (bufend < bufstart) * (bufsize - 1);
+      //printf("size:%d, start:%d, end:%d, used:%d, wrote:%d\n", bufsize, bufstart, bufend, bufused, wrote);
 
-    if (bufused < capsize) {
-      // Buffer is almost empty, don't send to pipe
-      mylogverb(LOG_INFO, 1, "Filling buffer\n");
-      fillbuf = 1;
-    }
-
-    if (bufused > (int)bufsize - 1 - capsize) {
-      // Buffer is almost full, don't store captured samples
-      mylogverb(LOG_INFO, 0, "Buffer full\n");
-      buffull = 1;
-    }
-
-    // Resume both capture storage and write to pipe when the buffer reaches half-full
-    if ((fillbuf == 1) && (bufused > (int)bufsize / 2))
-      fillbuf = 0;
-    if ((buffull == 1) && (bufused < (int)bufsize / 2))
-      buffull = 0;
-
-    if (!buffull  && rc > 0) {
-      // Store samples in buffer
-      readbytes = rc * 4;
-      bufendtoend = bufsize - bufend;
-      if (readbytes <= bufendtoend) {
-        // No wrap required
-        memcpy(buf + bufend, capbuffer, readbytes);
-      } else {
-        // Wrap required
-        memcpy(buf + bufend, capbuffer, bufendtoend);
-        memcpy(buf, capbuffer + bufendtoend, readbytes - bufendtoend);
+      if (bufused < capsize) {
+        // Buffer is almost empty, don't send to pipe
+        mylogverb(LOG_INFO, 1, "Filling buffer\n");
+        fillbuf = 1;
       }
-      bufend = (bufend + readbytes) % bufsize;
-    }
 
-    wrote = 0;
-    if (!fillbuf) {
-      bufstarttoend = bufsize - bufstart;
-      if (writebytes <= bufstarttoend) { // No wrap required
-        rc = write(writefd, buf + bufstart, writebytes);
-        if (rc == writebytes) wrote = 1;
-      } else { // Wrap required
-        rc = write(writefd, buf + bufstart, bufstarttoend);
-        rc = write(writefd, buf, writebytes - bufstarttoend);
-        if (rc == writebytes - bufstarttoend) wrote = 1;
+      if (bufused > (int)bufsize - 1 - capsize) {
+        // Buffer is almost full, don't store captured samples
+        mylogverb(LOG_INFO, 0, "Buffer full\n");
+        buffull = 1;
       }
-      if (wrote) {
-        bufstart = (bufstart + writebytes) % bufsize;
-      } else {
-        bufstart = (bufstart + readbytes) % bufsize; // Keep buffer used constant
+
+      // Resume both capture storage and write to pipe when the buffer reaches half-full
+      if ((fillbuf == 1) && (bufused > (int)bufsize / 2))
+        fillbuf = 0;
+      if ((buffull == 1) && (bufused < (int)bufsize / 2))
+        buffull = 0;
+
+      if (!buffull  && rc > 0) {
+        // Store samples in buffer
+        readbytes = rc * 4;
+        bufendtoend = bufsize - bufend;
+        if (readbytes <= bufendtoend) {
+          // No wrap required
+          memcpy(buf + bufend, capbuffer, readbytes);
+        } else {
+          // Wrap required
+          memcpy(buf + bufend, capbuffer, bufendtoend);
+          memcpy(buf, capbuffer + bufendtoend, readbytes - bufendtoend);
+        }
+        bufend = (bufend + readbytes) % bufsize;
       }
-    }
-  } // end if
- }
+
+      wrote = 0;
+      if (!fillbuf) {
+        bufstarttoend = bufsize - bufstart;
+        if (writebytes <= bufstarttoend) { // No wrap required
+          rc = write(writefd, buf + bufstart, writebytes);
+          if (rc == writebytes) wrote = 1;
+        } else { // Wrap required
+          rc = write(writefd, buf + bufstart, bufstarttoend);
+          rc = write(writefd, buf, writebytes - bufstarttoend);
+          if (rc == writebytes - bufstarttoend) wrote = 1;
+        }
+        if (wrote) {
+          bufstart = (bufstart + writebytes) % bufsize;
+        } else {
+          bufstart = (bufstart + readbytes) % bufsize; // Keep buffer used constant
+        }
+      }
+    } // end if
+  }
   exit(EXIT_SUCCESS);
 
-error:
-  if (readfd > 0) close(readfd);
-  if (writefd > 0) close(writefd);
-  mylog(LOG_INFO, "Stopping due to error.");
-  exit(EXIT_FAILURE);
+  error:
+    if (readfd > 0) close(readfd);
+    if (writefd > 0) close(writefd);
+    mylog(LOG_INFO, "Stopping due to error.");
+    exit(EXIT_FAILURE);
 }
