@@ -366,7 +366,7 @@ int main(int argc, char *argv[]) {
 
       // Determine the amount of buffer used
       bufused = bufend - bufstart + (bufend < bufstart) * (bufsize - 1);
-      //printf("size:%d, start:%d, end:%d, used:%d, wrote:%d\n", bufsize, bufstart, bufend, bufused, wrote);
+      mylogverb(LOG_INFO, 3, "size:%d, start:%d, end:%d, used:%d, wrote:%d\n", bufsize, bufstart, bufend, bufused, wrote);
 
       if (bufused < capsize) {
         // Buffer is almost empty, don't send to pipe
@@ -388,7 +388,7 @@ int main(int argc, char *argv[]) {
 
       if (!buffull  && rc > 0) {
         // Store samples in buffer
-        readbytes = rc * 4;
+        readbytes = rc * (samplesize / 8) * capchannels;
         bufendtoend = bufsize - bufend;
         if (readbytes <= bufendtoend) {
           // No wrap required
