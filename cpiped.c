@@ -123,7 +123,6 @@ int main(int argc, char *argv[]) {
 
   pid_t pid, sid;
   char pidstr[10];
-  char pidfile[50];
   int pidfd;
 
   // Ignore pipe signals
@@ -172,7 +171,8 @@ int main(int argc, char *argv[]) {
       daemonize = 1;
       break;
     case 'p':
-      pidpath = optarg;
+      pidpath = calloc(strlen(optarg), sizeof(char));
+      sprintf(pidpath, optarg);
       break;
     case 'v':
       log_verb = 1;
@@ -231,9 +231,8 @@ int main(int argc, char *argv[]) {
   }
 
   // Write the pidfile
-  sprintf(pidfile, pidpath);
   sprintf(pidstr, "%d\n", getpid());
-  pidfd = open(pidfile, O_RDWR|O_CREAT, 0644);
+  pidfd = open(pidpath, O_RDWR|O_CREAT, 0644);
   write(pidfd, pidstr, strlen(pidstr));
   close(pidfd);
 
