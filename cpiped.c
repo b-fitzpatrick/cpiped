@@ -277,9 +277,6 @@ int main(int argc, char *argv[]) {
   }
   close(readfd);
 
-  // Set the FIFO size to 8192 bytes to minimize latency
-  fcntl(writefd, F_SETPIPE_SZ, 8192);
-
   // Open PCM device for recording (capture).
   rc = snd_pcm_open(&handle, capdev, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
   if (rc != 0) {
@@ -293,8 +290,8 @@ int main(int argc, char *argv[]) {
   snd_pcm_hw_params_set_channels(handle, params, capchannels);
   snd_pcm_hw_params_set_rate_near(handle, params, &samplerate, &dir);
 
-  // set buffer size in bit
-  bufsize = bufdur * samplerate * capchannels * 8;
+  // set buffer size in byte
+  bufsize = bufdur * samplerate * capchannels * (samplesize / 8);
 
   // Set period size to 1024 frames.
   frames = 1024;
@@ -315,6 +312,16 @@ int main(int argc, char *argv[]) {
   capsize = frames * (samplesize / 8) * capchannels; // (<samplesize> / 8) bytes/sample * <capchannels> channels
   capbuffer = calloc(capsize, sizeof(char));
   scapbuffer = (int16_t*)capbuffer;
+
+  // Set the FIFO size to twice the period size
+  int pipesize = fcntl(writefd, F_SETPIPE_SZ, 2 * capsize);
+  if (pipesize < 0) {
+    mylog(LOG_ERR, "Error setting FIFO size: %s\n", strerror(errno));
+    goto error;
+  }
+  if (pipesize != 2 * capsize) {
+    mylog(LOG_NOTICE, "WARN setting FIFO size to %ld, actual size %ld\n", 2*capsize, pipesize);
+  }
 
   // Determine write size
   writebytes = capsize - 32 ; // Write a bit less to make sure write controls pace
