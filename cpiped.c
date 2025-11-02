@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
   signal(SIGTERM, myterm);
 
   // Process command-line options and arguments
-  while ((opt = getopt(argc, argv, "d:b:s:e:t:Dp:v:")) != -1) {
+  while ((opt = getopt(argc, argv, "d:b:s:e:f:t:Dp:v:")) != -1) {
     switch (opt) {
     case 'd':
       capdev = optarg;
@@ -167,6 +167,13 @@ int main(int argc, char *argv[]) {
         goto error;
       }
       break;
+    case 'f':
+      samplerate = atoi(optarg);
+      if ((samplerate < 16000) || (samplerate > 192000)) {
+        mylog(LOG_ERR, "Invalid sample rate. Range is 16000-192000.\n");
+        goto error;
+      }
+      break;
     case 'D':
       daemonize = 1;
       break;
@@ -188,19 +195,19 @@ int main(int argc, char *argv[]) {
   if ((optind + 1) != argc) err = 1;
   if (err) {
     if (!daemonize) {
-      printf("\nUsage:\n %s [-d arg] [-b arg] [-s arg] "
-      "[-e arg] [-t arg] [-D] FIFO\n"
+      printf("\nUsage:\n %s [-s arg] [-e arg] [OPTIONS] FIFO\n"
       " -d : ALSA capture device ['default']\n"
-      " -b : target buffer in seconds [.5]\n"
+      " -b : target buffer in seconds [.25]\n"
       " -s : command to run when sound detected\n"
       " -e : command to run when silence detected\n"
       " -t : silence threshold (1 - 32767, [100])\n"
+      " -f : sample rate (16000 - 192000, [44100])\n"
       " -D : daemonize\n"
       " -p : path to pidfile [/var/run/cpiped.pid]\n"
       " -v : enable more verbose logs (-vv and -vvv for higher verbosity levels)\n"
       " FIFO : path to a named pipe\n", argv[0]);
     }
-    goto error;
+    exit(EXIT_FAILURE);
   }
 
   mylog(LOG_INFO, "Starting up.\n");
