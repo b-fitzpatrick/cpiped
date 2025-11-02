@@ -243,6 +243,19 @@ int main(int argc, char *argv[]) {
   write(pidfd, pidstr, strlen(pidstr));
   close(pidfd);
 
+  // Log configurations
+  if (log_verb) {
+    mylogverb(LOG_INFO, 1, "Demonize: '%d'\n", daemonize);
+    mylogverb(LOG_INFO, 1, "Log verbosity level: '%d'\n", log_verb);
+    mylogverb(LOG_INFO, 1, "Pid path: '%s'\n", pidpath);
+    mylogverb(LOG_INFO, 1, "Capture device: '%s'\n", capdev);
+    mylogverb(LOG_INFO, 1, "Sample rate: '%d'\n", samplerate);
+    mylogverb(LOG_INFO, 1, "Buffer duration: '%f'\n", bufdur);
+    mylogverb(LOG_INFO, 1, "Sound detect command: '%s'\n", startcmd);
+    mylogverb(LOG_INFO, 1, "Silence detect command: '%s'\n", endcmd);
+    mylogverb(LOG_INFO, 1, "Silence threshold: '%d'\n", silentt);  
+  }
+
   // Open the FIFO for read first, so the open for write succeeds.
   readfd = open(fifonam, O_RDONLY | O_NONBLOCK);
   if (readfd <= 0) {
