@@ -76,6 +76,34 @@ void myterm() {
   exit(EXIT_SUCCESS);
 }
 
+int setenvvar(const char *var_name, size_t var_val_len, unsigned int var_overwrite, const char *format, ...) {
+  va_list args;
+  va_start (args, format);
+
+  char *var_value;
+  int ret;
+
+  // allocate space for the variable value
+  var_value = malloc((var_val_len + 1) * sizeof(char));
+
+  if (var_value == NULL) {
+    mylog(LOG_ERR, "Unable to allocate memory for ENV variable setup '%s'\n", strerror(errno));
+    return 1;
+  }
+
+  // set variable value as string
+  vsnprintf(var_value, var_val_len + 1, format, args);
+
+  // Set the variable
+  ret = setenv(var_name, var_value, var_overwrite);
+
+  // Clean-up
+  free(var_value);
+  va_end(args);
+
+  return ret;
+}
+
 int main(int argc, char *argv[]) {
   int rc;
   int capsize;
@@ -331,6 +359,14 @@ int main(int argc, char *argv[]) {
   buf = calloc(bufsize, sizeof(char));
   bufstart = 0;
   bufend = 0;
+
+  // Export capture parameters to ENV variables
+  if (setenvvar("CPIPED_SR", 6, 1, "%ld", samplerate) == -1)
+    mylog(LOG_NOTICE, "WARN CPIPED_SR to '%ld' FAILED\n", samplerate);
+  if (setenvvar("CPIPED_SS", 2, 1, "%ld", samplesize) == -1)
+    mylog(LOG_NOTICE, "WARN CPIPED_SS to '%ld' FAILED\n", samplesize);
+  if (setenvvar("CPIPED_CC", 2, 1, "%d", capchannels) == -1)
+    mylog(LOG_NOTICE, "WARN CPIPED_CC to '%d' FAILED\n", capchannels);
 
   while (1) {
     // Capture samples
