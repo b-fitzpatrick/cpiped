@@ -372,7 +372,7 @@ int main(int argc, char *argv[]) {
     // Capture samples
     if (!wrote) // When not writing, wait a bit between captures.
       usleep(capusec * .95);
-    rc = snd_pcm_readi(handle, capbuffer, frames);
+    rc = snd_pcm_readi(handle, capbuffer, frames); // return number of captured frames
     if (rc == -EPIPE) { // EPIPE means overrun
       mylog(LOG_NOTICE, "Overrun occurred\n");
       snd_pcm_prepare(handle);
@@ -385,6 +385,7 @@ int main(int argc, char *argv[]) {
     // Check if there is sound and if so compute RMS power level regularly and count sounds and silences
     if (capcount > 10 && rc > 0) { // Approx. every quarter second
       power = 0;
+      // Each frame holds one sample per channel
       for (i = 0; i < rc / 2; i++) {
         power += pow(scapbuffer[i], 2) + pow(scapbuffer[i + 1], 2);
       }
@@ -450,7 +451,7 @@ int main(int argc, char *argv[]) {
       if ((buffull == 1) && (bufused < (int)bufsize / 2))
         buffull = 0;
 
-      if (!buffull  && rc > 0) {
+      if (!buffull && rc > 0) {
         // Store samples in buffer
         readbytes = rc * (samplesize / 8) * capchannels;
         bufendtoend = bufsize - bufend;
