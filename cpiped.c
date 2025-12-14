@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
   int rc;
   int capsize;
   snd_pcm_hw_params_t *params;
-  unsigned int samplerate = 41000;
+  unsigned int samplerate = 44100;
   unsigned int samplesize = 16;
   unsigned int capchannels = 2;
   unsigned int capusec;
