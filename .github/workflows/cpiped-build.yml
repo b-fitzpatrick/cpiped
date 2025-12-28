@@ -1,0 +1,21 @@
+name: cpiped build
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: install alsasound
+      run: sudo apt install -y libasound2-dev
+    - uses: actions/checkout@v4
+    - name: make
+      run: make
+    - name: check executable
+      run: bash -c "[[ -x cpiped ]]"
