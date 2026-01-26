@@ -9,6 +9,8 @@
 [![Forks][forks-shield]][forks-url]
 ![Build flow][build-shield]
 
+![c][c-shield]
+
     cpiped captures an audio stream and outputs it to a pipe
 
 `cpiped` was born  to capture line-in audio from a sound card and send it to [forked-daapd](https://github.com/ejurgensen/forked-daapd). On sound detection, it runs a simple script to start playing the associated pipe in forked-daapd.
@@ -36,7 +38,7 @@
 ## Getting Started
 
 ### Prerequisites
-`cpiped` relies on [ALSA lib]( http://www.alsa-project.org) as only prerequisite
+`cpiped` relies on [ALSA lib](http://www.alsa-project.org) as only prerequisite
 
 - Debian
   ```sh
@@ -71,7 +73,7 @@ FIFO: path to the named pipe where sound will be written
 
 | Option | Description                                                   | Type      | Default                 | Range            | Required? |
 | ------ | ------------------------------------------------------------- | --------- | ----------------------- | ---------------- | --------- |
-| `-d`   | ALSA capture device in *hw:\<card>,\<device>* format.         | `string`  | `'default'`             |                  | Yes       |
+| `-d`   | ALSA capture device in *hw:\<card>,\<device>* format.         | `string`  | `'default'`             |                  | No        |
 | `-f`   | ALSA capture device sample rate in Hz.                        | `integer` | `44100`                 | `16000 - 192000` | No        |
 | `-b`   | Buffer size in seconds.                                       | `float`   | `.25`                   | `.1 - 5.0`       | No        |
 | `-s`   | Command to run, in background, when sound is detected.        | `string`  |                         |                  | Yes       |
@@ -83,8 +85,8 @@ FIFO: path to the named pipe where sound will be written
 
 ### Env variables
 On start `cpiped` will set the following env variables
-- *CPIPED_SR* audio capture sample rate
-- *CPIPED_SS* audio capture sample size
+- *CPIPED_SR* audio capture sample rate in *Hz*
+- *CPIPED_SS* audio capture sample size in *bit(s)*
 - *CPIPED_CC* audio capture channel(s) count
 
 Those variables are visible by the sound and silence detect commands
@@ -115,10 +117,11 @@ See the [open issues](https://github.com/ale275/cpiped/issues) for a full list o
 [contributors-shield]: https://img.shields.io/github/contributors/ale275/cpiped.svg
 [contributors-url]: https://github.com/ale275/cpiped/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/ale275/cpiped.svg?style=flat
-[forks-url]: https://github.com/github_usale275ername/cpiped/network/members
+[forks-url]: https://github.com/ale275/cpiped/network/members
 [stars-shield]: https://img.shields.io/github/stars/ale275/cpiped.svg?style=flat
 [stars-url]: https://github.com/ale275/cpiped/stargazers
 [issues-shield]: https://img.shields.io/github/issues/ale275/cpiped.svg
 [issues-url]: https://github.com/ale275/cpiped/issues
 [license-shield]: https://img.shields.io/github/license/ale275/cpiped.svg
 [license-url]: https://github.com/ale275/cpiped/blob/master/LICENSE
+[c-shield]: https://img.shields.io/badge/made%20with%20C-1f425f?style=flat&logo=c&logoColor=white
