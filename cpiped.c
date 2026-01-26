@@ -197,7 +197,10 @@ int main(int argc, char *argv[]) {
       break;
     case 'f':
       samplerate = atoi(optarg);
-      if ((samplerate < 16000) || (samplerate > 192000)) {
+      if (samplerate == 0) {
+        mylog(LOG_INFO, "No sample rate specified. Reverting to default.\n");
+        samplerate = 44100;
+      } else if ((samplerate < 16000) || (samplerate > 192000)) {
         mylog(LOG_ERR, "Invalid sample rate. Range is 16000-192000.\n");
         goto error;
       }
